@@ -2,208 +2,179 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>방치형 돈벌기 게임</title>
+    <title>Python Game Console</title>
     <style>
-        body { font-family: 'Malgun Gothic', sans-serif; background-color: #f0f2f5; display: flex; justify-content: center; padding: 20px; }
-        .container { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); width: 400px; }
-        .status { font-size: 1.2em; font-weight: bold; margin-bottom: 20px; color: #1a73e8; border-bottom: 2px solid #eee; padding-bottom: 10px; }
-        .log { height: 150px; overflow-y: auto; background: #eee; padding: 10px; font-size: 0.9em; margin-bottom: 15px; border-radius: 5px; }
-        .menu-group { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-        button { padding: 10px; cursor: pointer; border: none; border-radius: 5px; background: #4caf50; color: white; transition: 0.3s; }
-        button:hover { background: #45a049; }
-        button:disabled { background: #ccc; }
-        .shop-item { margin-top: 10px; padding: 10px; border: 1px solid #ddd; border-radius: 5px; }
+        body { background-color: #0c0c0c; color: #00ff41; font-family: 'Consolas', 'Courier New', monospace; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; }
+        #console { width: 90%; max-width: 700px; height: 500px; border: 1px solid #00ff41; padding: 15px; overflow-y: auto; background: #000; white-space: pre-wrap; margin-bottom: 10px; box-shadow: 0 0 15px rgba(0, 255, 65, 0.2); }
+        #input-container { width: 90%; max-width: 700px; display: flex; gap: 10px; }
+        input { flex: 1; background: #000; border: 1px solid #00ff41; color: #00ff41; padding: 10px; font-size: 16px; outline: none; }
+        button { background: #00ff41; color: #000; border: none; padding: 10px 20px; font-weight: bold; cursor: pointer; }
+        button:hover { background: #008f11; }
     </style>
 </head>
 <body>
 
-<div class="container">
-    <div class="status">
-        💰 잔액: <span id="money">1000</span>원 <br>
-        <small id="goal">목표: 10,000,000원</small>
-    </div>
-    
-    <div class="log" id="gameLog">게임을 시작합니다!</div>
-
-    <div class="menu-group">
-        <button onclick="work()">🖱️ 돈벌기 (+<span id="clickPower">500</span>)</button>
-        <button onclick="showSection('hire')">👥 고용하기</button>
-        <button onclick="upgrade()">🆙 업그레이드 (<span id="upCost">500</span>원)</button>
-        <button onclick="showSection('gamble')">🎲 도박/주식</button>
-    </div>
-
-    <div id="hire" style="display:none; margin-top:20px;">
-        <h3>직원 고용</h3>
-        <div class="shop-item">
-            일반 알바 (5초당 500원) - 6,000원 
-            <button id="btnT1" onclick="buyWorker(1)">구매</button>
-        </div>
-        <div class="shop-item">
-            고급 알바 (3초당 6,500원) - 20,000원 
-            <button id="btnT2" onclick="buyWorker(2)">구매</button>
-        </div>
-        <div class="shop-item">
-            정식 직원 (2초당 9,000원) - 100,000원 
-            <button id="btnT3" onclick="buyWorker(3)">구매</button>
-        </div>
-    </div>
-
-    <div id="gamble" style="display:none; margin-top:20px;">
-        <h3>도박 및 주식</h3>
-        <button onclick="gamble()">🎲 홀짝 도박 (배수)</button>
-        <hr>
-        <div id="stockArea">
-            현재 주가: <span id="stockPrice">2000</span>원 <br>
-            보유 주식: <span id="stockCount">0</span>주 <br>
-            <button onclick="buyStock()">주식 사기</button>
-            <button onclick="sellStock()">주식 팔기</button>
-        </div>
-    </div>
+<div id="console"></div>
+<div id="input-container">
+    <input type="text" id="user-input" placeholder="명령어 입력..." autofocus>
+    <button onclick="processInput()">입력</button>
 </div>
 
 <script>
-    let mm = 1000;      // 잔액
-    let se = 1.0;       // 효율
-    let dd = 1;         // 업그레이드 레벨
-    let xc = 0;         // 주식 보유량
-    let cc = 2000;      // 주식 가격
-    let owned = [false, false, false];
+    // --- 파이썬 변수 그대로 선언 ---
+    let mm = 1000;
+    let se = 1;
+    let dd = 1;
+    let q = 0, w = 0, e = 0;
+    let xc = 0, cc = 0;
+    
+    // 현재 게임의 메뉴 상태 관리
+    let currentMenu = "MAIN"; 
+    let subMenu = ""; // 고용(1,2,3), 도박(도박,주식) 등 세부 단계
 
-    const logEl = document.getElementById('gameLog');
+    const consoleBox = document.getElementById('console');
+    const inputField = document.getElementById('user-input');
 
-    function updateUI() {
-        document.getElementById('money').innerText = Math.floor(mm).toLocaleString();
-        document.getElementById('clickPower').innerText = Math.floor(se * 500).toLocaleString();
-        document.getElementById('upCost').innerText = (dd * 500).toLocaleString();
-        document.getElementById('stockPrice').innerText = cc.toLocaleString();
-        document.getElementById('stockCount').innerText = xc;
-        
-        if (mm >= 10000000) {
-            alert("축하합니다! 10,000,000원을 모아 게임을 클리어했습니다!");
-            location.reload();
-        }
+    function print(text = "") {
+        consoleBox.innerText += text + "\n";
+        consoleBox.scrollTop = consoleBox.scrollHeight;
     }
 
-    function addLog(msg) {
-        const p = document.createElement('p');
-        p.innerText = msg;
-        logEl.prepend(p);
+    // --- 쓰레드(자동 돈 벌기) 구현 ---
+    function startThread1() { setInterval(() => { mm += se * 500; }, 5000); }
+    function startThread2() { setInterval(() => { mm += se * 6500; }, 3000); }
+    function startThread3() { setInterval(() => { mm += se * 9000; }, 2000); }
+
+    function showMainMenu() {
+        print(`\n고용 | 업그레이드 | ${Math.floor(mm)}원/10,000,000원 | 돈벌기 | 도박`);
+        if (mm >= 10000000) print("-the end-");
     }
 
-    function showSection(id) {
-        const el = document.getElementById(id);
-        el.style.display = el.style.display === 'none' ? 'block' : 'none';
-    }
+    function processInput() {
+        const n = inputField.value.trim();
+        if (n !== "") print(`> ${n}`); // 입력값 표시
+        inputField.value = "";
 
-    // 돈벌기 (클릭)
-    function work() {
-        let gain = se * 500;
-        mm += gain;
-        addLog(`클릭으로 ${gain.toFixed(0)}원을 벌었습니다.`);
-        updateUI();
-    }
-
-    // 업그레이드
-    function upgrade() {
-        let cost = dd * 500;
-        if (mm >= cost) {
-            mm -= cost;
-            se += 0.02;
-            dd += 1;
-            addLog("업그레이드 완료! 효율이 2% 상승했습니다.");
-            updateUI();
-        } else {
-            alert("돈이 부족합니다!");
-        }
-    }
-
-    // 고용 (쓰레드 대신 setInterval 사용)
-    function buyWorker(num) {
-        let costs = [6000, 20000, 100000];
-        let idx = num - 1;
-
-        if (owned[idx]) {
-            alert("이미 고용되었습니다.");
-            return;
-        }
-
-        if (mm >= costs[idx]) {
-            mm -= costs[idx];
-            owned[idx] = true;
-            document.getElementById(`btnT${num}`).disabled = true;
-            
-            if (num === 1) {
-                setInterval(() => { mm += se * 500; updateUI(); }, 5000);
-                addLog("일반 알바생을 고용했습니다 (5초 주기)");
-            } else if (num === 2) {
-                setInterval(() => { mm += se * 6500; updateUI(); }, 3000);
-                addLog("고급 알바생을 고용했습니다 (3초 주기)");
-            } else if (num === 3) {
-                setInterval(() => { mm += se * 9000; updateUI(); }, 2000);
-                addLog("직원을 고용했습니다 (2초 주기)");
-            }
-            updateUI();
-        } else {
-            alert("돈이 부족합니다!");
-        }
-    }
-
-    // 도박
-    function gamble() {
-        let amount = parseInt(prompt("걸 금액을 입력하세요:"));
-        if (isNaN(amount) || amount <= 0 || amount > mm) {
-            alert("금액이 올바르지 않습니다.");
-            return;
-        }
-
-        if (Math.random() > 0.5) {
-            mm += amount;
-            addLog(`도박 성공! ${amount}원을 얻었습니다.`);
-        } else {
-            mm -= amount;
-            addLog(`도박 실패... ${amount}원을 잃었습니다.`);
-        }
-        updateUI();
-    }
-
-    // 주식 가격 변동 시스템
-    setInterval(() => {
-        cc += Math.floor(Math.random() * 6001) - 3000;
-        if (cc <= 500) cc = 1000; // 최소 가격 방어
-        updateUI();
-    }, 4000);
-
-    function buyStock() {
-        if (mm >= cc) {
-            let count = parseInt(prompt(`몇 주를 살까요? (현재가: ${cc})`));
-            if (mm >= cc * count) {
-                mm -= cc * count;
-                xc += count;
-                addLog(`주식 ${count}주 매수 완료.`);
+        // 1. 메인 메뉴 로직
+        if (currentMenu === "MAIN") {
+            if (n.includes('고용')) {
+                print("1,2,3(선택)");
+                currentMenu = "HIRE";
+            } else if (n.includes('업그레이드')) {
+                currentMenu = "UPGRADE";
+                print(`돈 효율 2% 상승 | 비용 : ${dd * 500}`);
+                print("(사기,나가기)");
+            } else if (n.includes('돈벌기')) {
+                currentMenu = "WORK";
+                print(`돈 ${se * 500} 벌림`);
+                print("(벌기, 나가기)");
+            } else if (n.includes('도박')) {
+                currentMenu = "GAMBLE";
+                print("도박,주식,나가기");
             } else {
-                alert("돈이 부족합니다.");
+                showMainMenu();
             }
-        } else {
-            alert("잔액이 부족합니다.");
         }
-        updateUI();
-    }
-
-    function sellStock() {
-        if (xc > 0) {
-            let count = parseInt(prompt(`몇 주를 팔까요? (보유: ${xc})`));
-            if (count <= xc) {
-                mm += cc * count;
-                xc -= count;
-                addLog(`주식 ${count}주 매도 완료.`);
+        // 2. 고용 메뉴
+        else if (currentMenu === "HIRE") {
+            if (subMenu === "") {
+                if (n === '1') { print("일반 알바생 | 5초당 500원 | 비용 : 6000원"); subMenu = "1"; print("(사기,나가기)"); }
+                else if (n === '2') { print("고급 알바생 | 3초당 6500원 | 비용 : 20000원"); subMenu = "2"; print("(사기,나가기)"); }
+                else if (n === '3') { print("직원 | 2초당 9000원 | 비용 : 100,000원"); subMenu = "3"; print("(사기,나가기)"); }
+                else { currentMenu = "MAIN"; showMainMenu(); }
             } else {
-                alert("보유 주식이 부족합니다.");
+                if (n.includes('사기')) {
+                    if (subMenu === "1") {
+                        if (mm < 4000) print("돈이 부족합니다");
+                        else if (q === 1) print("이미 구매 됨");
+                        else { print("구매 성공"); mm -= 6000; q++; startThread1(); }
+                    } else if (subMenu === "2") {
+                        if (mm < 12000) print("돈이 부족합니다");
+                        else if (w === 1) print("이미 구매 됨"); // 파이썬 원본 e==1 버그는 아래 3번과 겹치므로 w로 수정 가능하나 원본 유지 시 e
+                        else { print("구매 성공"); mm -= 20000; w++; startThread2(); }
+                    } else if (subMenu === "3") {
+                        if (mm < 100000) print("돈이 부족합니다");
+                        else if (e === 1) print("이미 구매 됨");
+                        else { print("구매 성공"); mm -= 100000; e++; startThread3(); }
+                    }
+                }
+                subMenu = ""; currentMenu = "MAIN"; showMainMenu();
             }
         }
-        updateUI();
+        // 3. 업그레이드
+        else if (currentMenu === "UPGRADE") {
+            if (n.includes('사기')) {
+                if (mm < dd * 500) print("돈이 부족합니다");
+                else { print("구매 성공"); mm -= dd * 500; se += 1.02; dd += 1; }
+                print(`돈 효율 2% 상승 | 비용 : ${dd * 500}`);
+                print("(사기,나가기)");
+            } else { currentMenu = "MAIN"; showMainMenu(); }
+        }
+        // 4. 돈벌기
+        else if (currentMenu === "WORK") {
+            if (n.includes('벌기')) { subMenu = "CLICK"; print("돈(돈 생김), 나가기"); }
+            else if (subMenu === "CLICK" && n.includes('돈')) {
+                mm += se * 500;
+                print(`돈 벌림 | 현재 돈:${Math.floor(mm)}`);
+                print("돈(돈 생김), 나가기");
+            } else { subMenu = ""; currentMenu = "MAIN"; showMainMenu(); }
+        }
+        // 5. 도박/주식
+        else if (currentMenu === "GAMBLE") {
+            if (n.includes('도박')) { subMenu = "BET"; print("돈 걸기,나가기"); }
+            else if (n.includes('주식')) { subMenu = "STOCK"; handleStock(); }
+            else { currentMenu = "MAIN"; showMainMenu(); }
+        }
+        else if (subMenu === "BET") {
+            if (n.includes('돈 걸기')) { print("얼마?"); subMenu = "BET_AMOUNT"; }
+            else { subMenu = ""; print("도박,주식,나가기"); }
+        }
+        else if (subMenu === "BET_AMOUNT") {
+            let amt = parseInt(n);
+            if (!isNaN(amt)) {
+                if (Math.random() < 0.5) { print("성공"); mm += amt * 2; }
+                else { print("실패"); mm -= amt; }
+            }
+            subMenu = "BET"; print("돈 걸기,나가기");
+        }
+        else if (subMenu === "STOCK") {
+            if (n.includes('사기')) { print("몇주?"); subMenu = "STOCK_BUY"; }
+            else if (n.includes('팔기')) { print("몇주?"); subMenu = "STOCK_SELL"; }
+            else { subMenu = ""; print("도박,주식,나가기"); }
+        }
+        else if (subMenu === "STOCK_BUY") {
+            let count = parseInt(n);
+            if (mm < cc * count) print("돈이 부족합니다");
+            else { print(`${count}주 체결 완료`); xc += count; mm -= cc * count; }
+            subMenu = "STOCK"; handleStock();
+        }
+        else if (subMenu === "STOCK_SELL") {
+            let count = parseInt(n);
+            if (xc < count) print("주 부족");
+            else { 
+                // 원본의 mm >= cc * n 조건 로직 유지
+                if (mm >= cc * count) { print("매도 완료"); xc -= count; mm += cc * count; } 
+                else { print("돈 부족"); }
+            }
+            subMenu = "STOCK"; handleStock();
+        }
     }
 
-    updateUI();
+    function handleStock() {
+        if (cc <= 0) cc += 2000;
+        cc = Math.floor(Math.random() * 6001) - 3000; // -3000 ~ 3000
+        print(`현재 주식 : ${cc}원 | ${xc}주 보유`);
+        print("사기,팔기,나가기");
+    }
+
+    // 초기 실행
+    print("게임을 시작합니다.");
+    showMainMenu();
+    
+    // 엔터키 지원
+    inputField.addEventListener("keypress", (e) => {
+        if (e.key === "Enter") processInput();
+    });
 </script>
 
 </body>
