@@ -4,11 +4,13 @@
     <meta charset="UTF-8">
     <title>파이썬 게임 포팅</title>
     <style>
+        /* 배경은 검정색, 글자는 하얀색(#ffffff)으로 변경 */
         body { background-color: #0c0c0c; color: #ffffff; font-family: 'Courier New', Courier, monospace; padding: 20px; }
         #terminal { width: 100%; height: 400px; overflow-y: auto; border: 1px solid #333; padding: 10px; margin-bottom: 10px; white-space: pre-wrap; }
         #input-area { display: flex; }
+        /* 입력창 글자색도 하얀색으로 변경 */
         #user-input { background: transparent; border: none; color: #ffffff; outline: none; width: 100%; font-size: 16px; }
-        .prompt { margin-right: 10px; }
+        .prompt { margin-right: 10px; color: #ffffff; }
     </style>
 </head>
 <body>
@@ -20,7 +22,6 @@
 </div>
 
 <script>
-    // 게임 변수 (파이썬 코드 로직 그대로 유지)
     let mm = 1000;
     let se = 1;
     let dd = 1;
@@ -28,8 +29,8 @@
     let w = 0;
     let e = 0;
     
-    let gameState = "MAIN"; // MAIN, HIRE, HIRE_DETAIL, UPGRADE, WORK
-    let subTarget = ""; // 1, 2, 3
+    let gameState = "MAIN";
+    let subTarget = "";
 
     const terminal = document.getElementById('terminal');
     const input = document.getElementById('user-input');
@@ -41,13 +42,9 @@
         terminal.scrollTop = terminal.scrollHeight;
     }
 
-    // 파이썬의 threading 기능을 setInterval로 구현
     function startThreads() {
-        // noo1 (5초)
         setInterval(() => { if(q === 1) mm += se * 500; }, 5000);
-        // noo2 (3초)
         setInterval(() => { if(w === 1) mm += se * 6500; }, 3000);
-        // noo3 (2초)
         setInterval(() => { if(e === 1) mm += se * 9000; }, 2000);
     }
 
@@ -66,7 +63,6 @@
     });
 
     function handleInput(n) {
-        // --- 메인 메뉴 상태 ---
         if (gameState === "MAIN") {
             if (n.includes('고용')) {
                 print("1,2,3(선택)");
@@ -81,8 +77,6 @@
                 gameState = "WORK";
             }
         } 
-        
-        // --- 고용 메뉴 상태 ---
         else if (gameState === "HIRE") {
             if (n === '1') {
                 print("일반 알바생 | 5초당 500원 | 비용 : 6000원");
@@ -104,20 +98,18 @@
                 showMainMenu();
             }
         }
-
-        // --- 고용 상세 구매 상태 (파이썬 버그/로직 그대로 반영) ---
         else if (gameState === "HIRE_DETAIL") {
             if (n.includes('사기')) {
                 if (subTarget === "1") {
-                    if (mm < 4000) print("돈이 부족합니다"); // 파이썬 원본의 4000원 체크 유지
+                    if (mm < 4000) print("돈이 부족합니다");
                     else if (mm >= 4000) {
                         if (q === 1) print("이미 구매 됨");
                         else { print("구매 성공"); mm -= 6000; q = 1; }
                     }
                 } else if (subTarget === "2") {
-                    if (mm < 12000) print("돈이 부족합니다"); // 파이썬 원본의 12000원 체크 유지
+                    if (mm < 12000) print("돈이 부족합니다");
                     else if (mm >= 12000) {
-                        if (e === 1) print("이미 구매 됨"); // 원본의 'e==1' 버그 유지
+                        if (e === 1) print("이미 구매 됨");
                         else if (w === 0) { print("구매 성공"); mm -= 20000; w = 1; }
                     }
                 } else if (subTarget === "3") {
@@ -131,8 +123,6 @@
             gameState = "MAIN";
             showMainMenu();
         }
-
-        // --- 업그레이드 상태 ---
         else if (gameState === "UPGRADE") {
             if (n.includes('사기')) {
                 if (mm < dd * 500) {
@@ -150,8 +140,6 @@
                 showMainMenu();
             }
         }
-
-        // --- 돈벌기 상태 ---
         else if (gameState === "WORK") {
             if (n.includes('벌기') || n.includes('돈')) {
                 mm += se * 500;
@@ -164,7 +152,6 @@
         }
     }
 
-    // 게임 시작
     startThreads();
     showMainMenu();
 </script>
